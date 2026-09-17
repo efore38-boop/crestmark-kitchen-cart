@@ -3,6 +3,7 @@ import { Mail, MapPin, Menu, MessageCircle, Minus, Phone, Plus, ShoppingBag, Tra
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -375,11 +376,13 @@ function CrestmarkFooter() {
 }
 
 export function ProductCard({ product, featured = false }: { product: (typeof products)[number]; featured?: boolean }) {
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [packSize, setPackSize] = useState(product.packSizes[0] ?? "Standard pack");
   const { addToCart } = useCart();
 
   return (
+    <>
     <article className={cn("group grid border border-border bg-card transition-all duration-500 hover:-translate-y-1 hover:shadow-elegant", featured ? "lg:grid-rows-[auto_1fr]" : "")}>
       <Link to="/products/$slug" params={{ slug: product.slug }} className="block overflow-hidden" aria-label={`View ${product.name}`}>
         <img
@@ -428,7 +431,7 @@ export function ProductCard({ product, featured = false }: { product: (typeof pr
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Button type="button" variant="outline" onClick={() => addToCart({ product, packSize, quantity: 1 })}>
+            <Button type="button" variant="outline" onClick={() => setQuickViewOpen(true)}>
               Quick View
             </Button>
             <Button asChild variant="ghost">
@@ -438,5 +441,51 @@ export function ProductCard({ product, featured = false }: { product: (typeof pr
         </div>
       </div>
     </article>
+    <Dialog open={quickViewOpen} onOpenChange={setQuickViewOpen}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-background p-0 sm:max-w-3xl">
+        <div className="grid md:grid-cols-[0.95fr_1.05fr]">
+          <img
+            src={product.image}
+            alt={product.alt}
+            loading="lazy"
+            width={900}
+            height={900}
+            className="aspect-square w-full object-cover"
+          />
+          <div className="grid content-start gap-5 p-6 sm:p-8">
+            <DialogHeader className="text-left">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent-gold">{product.category}</p>
+              <DialogTitle className="font-serif text-4xl leading-none">{product.name}</DialogTitle>
+              <DialogDescription className="text-base leading-7">{product.description}</DialogDescription>
+            </DialogHeader>
+            <p className="font-serif text-2xl">{formatPrice(product.price)}</p>
+            <p className="text-sm leading-6 text-muted-foreground">{product.detail}</p>
+            <div className="grid gap-3">
+              <select
+                value={packSize}
+                onChange={(event) => setPackSize(event.target.value)}
+                className="h-11 w-full border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                aria-label={`${product.name} pack size`}
+              >
+                {product.packSizes.map((size) => <option key={size}>{size}</option>)}
+              </select>
+              <Button
+                type="button"
+                onClick={() => {
+                  addToCart({ product, packSize, quantity });
+                  setQuickViewOpen(false);
+                }}
+              >
+                Add to Cart
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to="/products/$slug" params={{ slug: product.slug }}>View Product</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
