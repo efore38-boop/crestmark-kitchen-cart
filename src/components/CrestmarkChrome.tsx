@@ -1,0 +1,497 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Mail, MapPin, Menu, MessageCircle, Minus, Phone, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { displayWhatsappNumber, formatPrice, products, whatsappNumber } from "@/lib/crestmark-products";
+import { useCart } from "@/lib/crestmark-cart";
+
+type CustomerForm = {
+  name: string;
+  phone: string;
+  location: string;
+  notes: string;
+};
+
+const navItems = [
+  { label: "About", to: "/about" },
+  { label: "Products", to: "/shop" },
+  { label: "Our Story", to: "/our-story" },
+  { label: "Contact", to: "/contact" },
+] as const;
+
+export function CrestmarkShell({ children }: { children: ReactNode }) {
+  const [cartOpen, setCartOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const { itemCount } = useCart();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const transparentHeader = pathname === "/" && !scrolled && !menuOpen;
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 24);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <>
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-40 border-b transition-all duration-500",
+          transparentHeader
+            ? "border-transparent bg-transparent text-hero-foreground"
+            : "border-border bg-background/90 shadow-elegant backdrop-blur-xl",
+        )}
+      >
+        <div className="mx-auto grid h-20 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 sm:flex sm:justify-between sm:px-8">
+          <Link to="/" className="group flex min-w-0 items-center gap-3" aria-label="Crestmark home">
+            <span className="grid h-10 w-10 shrink-0 place-items-center border border-current/30 font-serif text-lg leading-none">
+              C
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-serif text-lg uppercase tracking-[0.22em] sm:text-xl">
+                Crestmark
+              </span>
+              <span className="block truncate text-[0.65rem] uppercase tracking-[0.28em] opacity-75">
+                Quality Soy
+              </span>
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-8 text-xs font-semibold uppercase tracking-[0.24em] lg:flex">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="transition-opacity hover:opacity-70"
+                activeProps={{ className: "text-accent-gold" }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="relative"
+              aria-label={`Open cart with ${itemCount} items`}
+              onClick={() => setCartOpen(true)}
+            >
+              <ShoppingBag />
+              {itemCount > 0 ? (
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent-gold px-1 text-[0.68rem] font-bold text-accent-gold-foreground">
+                  {itemCount}
+                </span>
+              ) : null}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X /> : <Menu />}
+            </Button>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "grid overflow-hidden border-t border-border bg-background/95 px-5 text-foreground transition-all duration-500 lg:hidden",
+            menuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr] border-transparent",
+          )}
+        >
+          <nav className="min-h-0 space-y-1 py-5">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="block py-3 font-serif text-2xl"
+                onClick={() => setMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      {children}
+      <CrestmarkFooter />
+
+      <Button
+        type="button"
+        className="fixed inset-x-5 bottom-5 z-30 h-14 shadow-floating md:hidden"
+        aria-label={`Open cart with ${itemCount} items`}
+        onClick={() => setCartOpen(true)}
+      >
+        <ShoppingBag /> Cart {itemCount > 0 ? `(${itemCount})` : ""}
+      </Button>
+
+      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+    </>
+  );
+}
+
+function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { lines, itemCount, orderTotal, updateQuantity, removeFromCart, clearCart } = useCart();
+  const [form, setForm] = useState<CustomerForm>({ name: "", phone: "", location: "", notes: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const detailedLines = lines
+    .map((line) => ({ ...line, product: products.find((product) => product.id === line.productId) }))
+    .filter((line) => Boolean(line.product));
+
+  const canSend = form.name.trim() && form.phone.trim() && form.location.trim() && detailedLines.length > 0;
+
+  const totalLabel = orderTotal === null ? "To be confirmed" : `USD ${orderTotal.toFixed(2)}`;
+
+  const whatsappHref = useMemo(() => {
+    const orderLines = detailedLines
+      .map((line) => `• ${line.product?.name} (${line.packSize}) × ${line.quantity}`)
+      .join("\n");
+    const notes = form.notes.trim() ? `\nNotes: ${form.notes.trim()}\n` : "";
+    const message = `Hello Crestmark Enterprises 👋\n\nI would like to place an order:\n\nOrder\n${orderLines}\n\nTotal: ${totalLabel}\n\nCustomer details\nName: ${form.name.trim()}\nPhone: ${form.phone.trim()}\nDelivery location: ${form.location.trim()}${notes}\nPlease confirm availability, current pricing and delivery arrangements.\n\nThank you.`;
+
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+  }, [detailedLines, form, totalLabel]);
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    if (!canSend) return;
+    window.open(whatsappHref, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="flex w-full flex-col border-border bg-background p-0 sm:max-w-xl">
+        <SheetHeader className="border-b border-border px-6 py-6 text-left">
+          <SheetTitle className="font-serif text-3xl">Your Order</SheetTitle>
+          <p className="text-sm text-muted-foreground">
+            Review your selection, then send it directly to Crestmark on WhatsApp.
+          </p>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          {detailedLines.length === 0 ? (
+            <div className="grid min-h-72 place-items-center border border-border text-center">
+              <div className="max-w-xs px-6">
+                <ShoppingBag className="mx-auto mb-5 h-10 w-10 text-accent-gold" />
+                <p className="font-serif text-2xl">Your cart is empty.</p>
+                <p className="mt-2 text-sm text-muted-foreground">Add Crestmark products to begin an order.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {detailedLines.map((line) => {
+                const product = line.product;
+                if (!product) return null;
+                const subtotal = product.price === null ? "Confirm price" : `USD ${(product.price * line.quantity).toFixed(2)}`;
+
+                return (
+                  <article key={`${line.productId}-${line.packSize}`} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-4 border-b border-border pb-5">
+                    <img
+                      src={product.image}
+                      alt={product.alt}
+                      loading="lazy"
+                      width={160}
+                      height={160}
+                      className="aspect-square w-full object-cover"
+                    />
+                    <div className="min-w-0">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-serif text-xl">{product.name}</h3>
+                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">{line.packSize}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Remove ${product.name}`}
+                          onClick={() => removeFromCart(line.productId, line.packSize)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                      <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+                        <div className="flex items-center border border-border">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Decrease ${product.name}`}
+                            onClick={() => updateQuantity(line.productId, line.packSize, line.quantity - 1)}
+                          >
+                            <Minus />
+                          </Button>
+                          <span className="w-9 text-center text-sm font-semibold">{line.quantity}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Increase ${product.name}`}
+                            onClick={() => updateQuantity(line.productId, line.packSize, line.quantity + 1)}
+                          >
+                            <Plus />
+                          </Button>
+                        </div>
+                        <p className="text-right text-sm font-semibold">{subtotal}</p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {detailedLines.length > 0 ? (
+            <section className="mt-8 space-y-4" aria-labelledby="checkout-heading">
+              <div className="flex items-center justify-between border-y border-border py-4">
+                <span className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Order Total</span>
+                <span className="font-serif text-2xl">{totalLabel}</span>
+              </div>
+              <div className="space-y-4">
+                <h3 id="checkout-heading" className="font-serif text-2xl">Guest details</h3>
+                <FormField label="Full Name" error={submitted && !form.name.trim()}>
+                  <Input
+                    aria-label="Full Name"
+                    value={form.name}
+                    onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                    autoComplete="name"
+                  />
+                </FormField>
+                <FormField label="WhatsApp Number" error={submitted && !form.phone.trim()}>
+                  <Input
+                    aria-label="WhatsApp Number"
+                    value={form.phone}
+                    onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                    autoComplete="tel"
+                    inputMode="tel"
+                  />
+                </FormField>
+                <FormField label="Delivery Location" error={submitted && !form.location.trim()}>
+                  <Input
+                    aria-label="Delivery Location"
+                    value={form.location}
+                    onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))}
+                    autoComplete="street-address"
+                  />
+                </FormField>
+                <FormField label="Optional Order Notes">
+                  <Textarea
+                    aria-label="Optional Order Notes"
+                    value={form.notes}
+                    onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                    rows={4}
+                  />
+                </FormField>
+              </div>
+            </section>
+          ) : null}
+        </div>
+
+        <div className="border-t border-border bg-secondary/55 p-6">
+          <div className="mb-4 flex items-center justify-between text-sm">
+            <span>{itemCount} item{itemCount === 1 ? "" : "s"}</span>
+            <span>WhatsApp {displayWhatsappNumber}</span>
+          </div>
+          <Button type="button" className="h-14 w-full" disabled={detailedLines.length === 0} onClick={handleSubmit}>
+            Order via WhatsApp
+          </Button>
+          {submitted && !canSend ? (
+            <p className="mt-3 text-sm text-destructive">Please complete your name, WhatsApp number and delivery location.</p>
+          ) : null}
+          {detailedLines.length > 0 ? (
+            <Button type="button" variant="ghost" className="mt-3 w-full" onClick={clearCart}>
+              Clear cart
+            </Button>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function FormField({ label, error, children }: { label: string; error?: boolean; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label className={cn("text-xs uppercase tracking-[0.2em]", error ? "text-destructive" : "text-muted-foreground")}>{label}</Label>
+      {children}
+      {error ? <p className="text-xs text-destructive">Required</p> : null}
+    </div>
+  );
+}
+
+function CrestmarkFooter() {
+  return (
+    <footer className="bg-primary text-primary-foreground">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+        <div>
+          <Link to="/" className="inline-flex items-center gap-3" aria-label="Crestmark home">
+            <span className="grid h-11 w-11 place-items-center border border-primary-foreground/35 font-serif text-xl">C</span>
+            <span>
+              <span className="block font-serif text-2xl uppercase tracking-[0.18em]">Crestmark Enterprises</span>
+              <span className="mt-1 block text-xs uppercase tracking-[0.26em] text-primary-foreground/70">Quality Soy. Trusted Nutrition.</span>
+            </span>
+          </Link>
+          <p className="mt-8 max-w-md leading-7 text-primary-foreground/70">
+            Premium soy-based food products for households, retailers, restaurants, institutions and commercial customers across Zimbabwe.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.26em] text-accent-gold">Contact</h2>
+          <ul className="mt-5 space-y-4 text-primary-foreground/75">
+            <li className="flex gap-3"><Mail className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> infor@crestmark.co.zw</li>
+            <li className="flex gap-3"><Phone className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> +263 786 362 216</li>
+            <li className="flex gap-3"><Phone className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> +263 784 920 381</li>
+            <li className="flex gap-3"><MapPin className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> Zimbabwe</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.26em] text-accent-gold">Links</h2>
+          <nav className="mt-5 grid gap-3 text-primary-foreground/75">
+            <Link to="/about" className="hover:text-primary-foreground">About</Link>
+            <Link to="/shop" className="hover:text-primary-foreground">Products</Link>
+            <Link to="/our-story" className="hover:text-primary-foreground">Our Story</Link>
+            <Link to="/contact" className="hover:text-primary-foreground">Contact</Link>
+            <a href="https://wa.me/263786362216" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-primary-foreground">
+              <MessageCircle className="h-4 w-4" /> WhatsApp
+            </a>
+          </nav>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+export function ProductCard({ product, featured = false }: { product: (typeof products)[number]; featured?: boolean }) {
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [packSize, setPackSize] = useState(product.packSizes[0] ?? "Standard pack");
+  const { addToCart } = useCart();
+
+  return (
+    <>
+    <article className={cn("group grid border border-border bg-card transition-all duration-500 hover:-translate-y-1 hover:shadow-elegant", featured ? "lg:grid-rows-[auto_1fr]" : "")}>
+      <Link to="/products/$slug" params={{ slug: product.slug }} className="block overflow-hidden" aria-label={`View ${product.name}`}>
+        <img
+          src={product.image}
+          alt={product.alt}
+          loading="lazy"
+          width={1200}
+          height={912}
+          className="aspect-[4/3] w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+      </Link>
+      <div className="grid gap-5 p-5 sm:p-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.24em] text-accent-gold">{product.category}</p>
+          <h3 className="mt-3 font-serif text-3xl leading-tight">{product.name}</h3>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">{product.description}</p>
+        </div>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <span className="font-semibold">{formatPrice(product.price)}</span>
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.availability}</span>
+          </div>
+          <label className="sr-only" htmlFor={`${product.id}-pack`}>Pack size</label>
+          <select
+            id={`${product.id}-pack`}
+            value={packSize}
+            onChange={(event) => setPackSize(event.target.value)}
+            className="h-11 w-full border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+          >
+            {product.packSizes.map((size) => (
+              <option key={size}>{size}</option>
+            ))}
+          </select>
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+            <div className="flex h-11 items-center border border-border">
+              <Button type="button" variant="ghost" size="icon" aria-label={`Decrease ${product.name} quantity`} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
+                <Minus />
+              </Button>
+              <span className="w-9 text-center text-sm font-semibold">{quantity}</span>
+              <Button type="button" variant="ghost" size="icon" aria-label={`Increase ${product.name} quantity`} onClick={() => setQuantity((value) => Math.min(99, value + 1))}>
+                <Plus />
+              </Button>
+            </div>
+            <Button type="button" onClick={() => addToCart({ product, packSize, quantity })}>
+              Add to Cart
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Button type="button" variant="outline" onClick={() => setQuickViewOpen(true)}>
+              Quick View
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/products/$slug" params={{ slug: product.slug }}>View Product</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
+    <Dialog open={quickViewOpen} onOpenChange={setQuickViewOpen}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-background p-0 sm:max-w-3xl">
+        <div className="grid md:grid-cols-[0.95fr_1.05fr]">
+          <img
+            src={product.image}
+            alt={product.alt}
+            loading="lazy"
+            width={900}
+            height={900}
+            className="aspect-square w-full object-cover"
+          />
+          <div className="grid content-start gap-5 p-6 sm:p-8">
+            <DialogHeader className="text-left">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent-gold">{product.category}</p>
+              <DialogTitle className="font-serif text-4xl leading-none">{product.name}</DialogTitle>
+              <DialogDescription className="text-base leading-7">{product.description}</DialogDescription>
+            </DialogHeader>
+            <p className="font-serif text-2xl">{formatPrice(product.price)}</p>
+            <p className="text-sm leading-6 text-muted-foreground">{product.detail}</p>
+            <div className="grid gap-3">
+              <select
+                value={packSize}
+                onChange={(event) => setPackSize(event.target.value)}
+                className="h-11 w-full border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                aria-label={`${product.name} pack size`}
+              >
+                {product.packSizes.map((size) => <option key={size}>{size}</option>)}
+              </select>
+              <Button
+                type="button"
+                onClick={() => {
+                  addToCart({ product, packSize, quantity });
+                  setQuickViewOpen(false);
+                }}
+              >
+                Add to Cart
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to="/products/$slug" params={{ slug: product.slug }}>View Product</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
+  );
+}
