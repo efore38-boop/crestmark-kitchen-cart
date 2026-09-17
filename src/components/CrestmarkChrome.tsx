@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Mail, MapPin, Menu, MessageCircle, Minus, Phone, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -31,6 +31,8 @@ export function CrestmarkShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { itemCount } = useCart();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const transparentHeader = pathname === "/" && !scrolled && !menuOpen;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 24);
@@ -44,9 +46,9 @@ export function CrestmarkShell({ children }: { children: ReactNode }) {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-40 border-b transition-all duration-500",
-          scrolled || menuOpen
-            ? "border-border bg-background/90 shadow-elegant backdrop-blur-xl"
-            : "border-transparent bg-transparent text-hero-foreground",
+          transparentHeader
+            ? "border-transparent bg-transparent text-hero-foreground"
+            : "border-border bg-background/90 shadow-elegant backdrop-blur-xl",
         )}
       >
         <div className="mx-auto grid h-20 max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 sm:flex sm:justify-between sm:px-8">
@@ -304,7 +306,7 @@ function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
             <span>{itemCount} item{itemCount === 1 ? "" : "s"}</span>
             <span>WhatsApp {displayWhatsappNumber}</span>
           </div>
-          <Button type="button" className="h-13 w-full" disabled={detailedLines.length === 0} onClick={handleSubmit}>
+          <Button type="button" className="h-14 w-full" disabled={detailedLines.length === 0} onClick={handleSubmit}>
             Order via WhatsApp
           </Button>
           {submitted && !canSend ? (
