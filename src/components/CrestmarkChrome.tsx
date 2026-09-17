@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Mail, MapPin, Menu, MessageCircle, Minus, Phone, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ const navItems = [
   { label: "Contact", to: "/contact" },
 ] as const;
 
-export function CrestmarkShell({ children }: { children: React.ReactNode }) {
+export function CrestmarkShell({ children }: { children: ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -128,6 +128,7 @@ export function CrestmarkShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {children}
+      <CrestmarkFooter />
 
       <Button
         type="button"
@@ -319,13 +320,57 @@ function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
   );
 }
 
-function FormField({ label, error, children }: { label: string; error?: boolean; children: React.ReactNode }) {
+function FormField({ label, error, children }: { label: string; error?: boolean; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <Label className={cn("text-xs uppercase tracking-[0.2em]", error ? "text-destructive" : "text-muted-foreground")}>{label}</Label>
       {children}
       {error ? <p className="text-xs text-destructive">Required</p> : null}
     </div>
+  );
+}
+
+function CrestmarkFooter() {
+  return (
+    <footer className="bg-primary text-primary-foreground">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+        <div>
+          <Link to="/" className="inline-flex items-center gap-3" aria-label="Crestmark home">
+            <span className="grid h-11 w-11 place-items-center border border-primary-foreground/35 font-serif text-xl">C</span>
+            <span>
+              <span className="block font-serif text-2xl uppercase tracking-[0.18em]">Crestmark Enterprises</span>
+              <span className="mt-1 block text-xs uppercase tracking-[0.26em] text-primary-foreground/70">Quality Soy. Trusted Nutrition.</span>
+            </span>
+          </Link>
+          <p className="mt-8 max-w-md leading-7 text-primary-foreground/70">
+            Premium soy-based food products for households, retailers, restaurants, institutions and commercial customers across Zimbabwe.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.26em] text-accent-gold">Contact</h2>
+          <ul className="mt-5 space-y-4 text-primary-foreground/75">
+            <li className="flex gap-3"><Mail className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> infor@crestmark.co.zw</li>
+            <li className="flex gap-3"><Phone className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> +263 786 362 216</li>
+            <li className="flex gap-3"><Phone className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> +263 784 920 381</li>
+            <li className="flex gap-3"><MapPin className="mt-1 h-4 w-4 shrink-0 text-accent-gold" /> Zimbabwe</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.26em] text-accent-gold">Links</h2>
+          <nav className="mt-5 grid gap-3 text-primary-foreground/75">
+            <Link to="/about" className="hover:text-primary-foreground">About</Link>
+            <Link to="/shop" className="hover:text-primary-foreground">Products</Link>
+            <Link to="/our-story" className="hover:text-primary-foreground">Our Story</Link>
+            <Link to="/contact" className="hover:text-primary-foreground">Contact</Link>
+            <a href="https://wa.me/263786362216" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-primary-foreground">
+              <MessageCircle className="h-4 w-4" /> WhatsApp
+            </a>
+          </nav>
+        </div>
+      </div>
+    </footer>
   );
 }
 
