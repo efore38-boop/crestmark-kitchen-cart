@@ -95,7 +95,7 @@ function ProductDetailPage() {
                   </select>
                 </div>
                 <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-                  <div className="flex h-13 items-center border border-border">
+                  <div className="flex h-14 items-center border border-border">
                     <Button type="button" variant="ghost" size="icon" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
                       <Minus />
                     </Button>
