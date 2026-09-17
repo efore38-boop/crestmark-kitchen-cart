@@ -269,6 +269,7 @@ function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                 <h3 id="checkout-heading" className="font-serif text-2xl">Guest details</h3>
                 <FormField label="Full Name" error={submitted && !form.name.trim()}>
                   <Input
+                    aria-label="Full Name"
                     value={form.name}
                     onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                     autoComplete="name"
@@ -276,6 +277,7 @@ function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                 </FormField>
                 <FormField label="WhatsApp Number" error={submitted && !form.phone.trim()}>
                   <Input
+                    aria-label="WhatsApp Number"
                     value={form.phone}
                     onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
                     autoComplete="tel"
@@ -284,6 +286,7 @@ function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                 </FormField>
                 <FormField label="Delivery Location" error={submitted && !form.location.trim()}>
                   <Input
+                    aria-label="Delivery Location"
                     value={form.location}
                     onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))}
                     autoComplete="street-address"
@@ -291,6 +294,7 @@ function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                 </FormField>
                 <FormField label="Optional Order Notes">
                   <Textarea
+                    aria-label="Optional Order Notes"
                     value={form.notes}
                     onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
                     rows={4}
